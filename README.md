@@ -16,6 +16,31 @@ so the binary matches the floor our other universal binaries hold (`ra64.univers
 | Build | Output | Devices | Base |
 |-------|--------|---------|------|
 | Universal | `dsperate-aarch64.tar.gz` | Brick, Brick Pro, TSP, TSPS, Flip, Pixel2, Anbernic XX (BaseOS), RGB30 | Ubuntu 20.04 multiarch, GCC 10 (glibc 2.31) |
+| A30 | `dsperate-a30.tar.gz` | A30 (armhf, Cortex-A7) | A30 buildroot, GCC 13.2 (glibc 2.23) |
+
+### The 32-bit build has no JIT, and cannot have one without new code
+
+`dsperate-a30` is **interpreter + portable C++ renderer**. That is not a build-flag
+oversight, it is what DSperate currently is on a 32-bit host:
+
+- **The recompiler emits AArch64.** `src/core/cpu/jit/emit.h` is an AArch64 encoder, and
+  the design leans on AArch64's register file: guest r0–r7/r13/r14 are pinned in x19–x28,
+  r8–r12 in x9–x13, plus the cycle budget, page-table base, timing table, arena base and
+  context pointer — about 19 pinned host registers, 15 of them holding guest state. That
+  is what buys "linked blocks reconcile nothing". ARM32 has 16 registers with SP/LR/PC
+  spoken for, so the scheme does not shrink to fit; an ARM32 target needs a different
+  register allocator, i.e. a new backend, not a port.
+- **The NEON kernels use A64-only intrinsics** — 31 uses across `kernels_neon.cpp` and
+  `render3d.cpp` (`vaddvq`-class horizontal reductions, `vqtbl`, `float64x2`). ARMv7 NEON
+  has none of them.
+
+`CMakeLists.txt` turns both off automatically for a non-aarch64 `CMAKE_SYSTEM_PROCESSOR`,
+so the build succeeds quietly. `build-a30.sh` asserts they are off and records it in
+`BUILD_INFO`, so the tarball never implies otherwise.
+
+DraStic does have an ARM32 recompiler, which is why it runs on these devices — so the
+technique is proven on this class of hardware. Whether it is worth reimplementing is a
+question about measured interpreter speed, not about whether it is possible.
 
 JIT and NEON are both on: the cross toolchain reports `CMAKE_SYSTEM_PROCESSOR=aarch64`,
 which is what DSperate keys `DSPERATE_JIT` / `DSPERATE_NEON` off. The build hard-fails if
@@ -103,6 +128,17 @@ docker build -t dsperate-builder .
 mkdir -p output
 docker run --rm -e DSPERATE_VERSION=main -v "$PWD/output:/output" dsperate-builder
 ```
+
+## Patches
+
+`patches/` is applied to every target — `*.patch` via `git apply`, `*.py` via `python3`.
+
+- `0001-dmabuf-guard-no-wayland.py` — `display_wl.cpp` reads `wm.info.wl`, but
+  `SDL_syswm.h` only declares that member when SDL was built with wayland. Every embedded
+  SDL2 on a 32-bit spruce device is a Mali fbdev build with none (the A30's has zero
+  wayland strings), so the file will not compile there. Guards `DmabufOut::open`, which
+  already returns false to mean "no dmabuf, use the normal blit" — the same answer the
+  runtime check gives on such a device. No-op where SDL does have wayland.
 
 ## Not done here
 

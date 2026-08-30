@@ -1,0 +1,56 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    ninja-build \
+    pkg-config \
+    git \
+    ca-certificates \
+    python3 \
+    wget \
+    ccache \
+    file \
+    qemu-user-static \
+    && rm -rf /var/lib/apt/lists/*
+
+# A30 buildroot toolchain: GCC 13.2.0, glibc 2.23 sysroot, Mali fbdev EGL/GLES2,
+# SDL2 2.28.5. GCC 13 handles DSperate's C++17 without complaint, and 2.28.5 is
+# new enough for SDL_TouchFingerEvent.windowID and SDL_SysWMinfo's xdg_toplevel,
+# so unlike the aarch64 target this one needs no SDL2 built from source.
+COPY a30_toolchain-v1.0.tar.gz /tmp/
+RUN tar xzf /tmp/a30_toolchain-v1.0.tar.gz -C /opt && rm /tmp/a30_toolchain-v1.0.tar.gz
+
+RUN SYSROOT=/opt/a30/arm-a30-linux-gnueabihf/sysroot && \
+    rm -f /opt/a30/bin/arm-a30-linux-gnueabihf-gcc /opt/a30/bin/arm-a30-linux-gnueabihf-g++ && \
+    printf '#!/bin/sh\nexec /opt/a30/bin/arm-a30-linux-gnueabihf-gcc-13.2.0.br_real --sysroot=%s "$@"\n' "$SYSROOT" > /opt/a30/bin/arm-a30-linux-gnueabihf-gcc && \
+    printf '#!/bin/sh\nexec /opt/a30/bin/arm-a30-linux-gnueabihf-c++.br_real --sysroot=%s "$@"\n' "$SYSROOT" > /opt/a30/bin/arm-a30-linux-gnueabihf-g++ && \
+    chmod +x /opt/a30/bin/arm-a30-linux-gnueabihf-gcc /opt/a30/bin/arm-a30-linux-gnueabihf-g++
+
+# Buildroot ships these as real files; the sysroot loses the sonames.
+RUN SYSROOT=/opt/a30/arm-a30-linux-gnueabihf/sysroot && \
+    cd "$SYSROOT/lib" && \
+    ln -sf ld-2.23.so ld-linux-armhf.so.3 && \
+    ln -sf libc-2.23.so libc.so.6 && \
+    ln -sf libpthread-2.23.so libpthread.so.0 && \
+    ln -sf libdl-2.23.so libdl.so.2 && \
+    ln -sf libm-2.23.so libm.so.6 && \
+    ln -sf librt-2.23.so librt.so.1
+
+RUN SYSROOT=/opt/a30/arm-a30-linux-gnueabihf/sysroot && \
+    cd "$SYSROOT/usr/lib" && \
+    ln -sf libSDL2-2.0.so.0.2800.5 libSDL2.so && \
+    ln -sf libMali.so libEGL.so && \
+    ln -sf libMali.so libGLESv2.so && \
+    ln -sf libasound.so.2.0.0 libasound.so
+
+COPY toolchain-a30.cmake /toolchain-a30.cmake
+COPY build-a30.sh /build-a30.sh
+RUN chmod +x /build-a30.sh
+COPY patches/ /patches/
+
+WORKDIR /build
+ENTRYPOINT ["/build-a30.sh"]

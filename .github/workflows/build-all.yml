@@ -20,3 +20,9 @@ jobs:
     with:
       dsperate_version: ${{ inputs.dsperate_version }}
       skip_tests: ${{ inputs.skip_tests }}
+
+  a30:
+    uses: ./.github/workflows/build-a30.yml
+    with:
+      dsperate_version: ${{ inputs.dsperate_version }}
+      skip_tests: ${{ inputs.skip_tests }}
