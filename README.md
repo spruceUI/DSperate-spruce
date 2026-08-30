@@ -75,9 +75,12 @@ dumped from your own console. None are included here, and none can be.
   Cortex-A53 or A55; `-mtune` changes scheduling only, never the instruction set, so the
   binary stays generic ARMv8-A. It is repeated in the link flags because the core is
   built with LTO, which recompiles at link time against whatever the link command names.
-- **GCC 10**, not focal's default 9 (`CROSS_GCC=9` to switch). `CMAKE_AR`/`RANLIB`/`NM`
-  are the matching `gcc-ar-10` wrappers — the core is a static library built with LTO,
-  and a plain `ar` fails to load the plugin.
+- **GCC 10**, not focal's default 9 (`CROSS_GCC=9` to switch). ccache is attached as a
+  CMake compiler *launcher*, not as a wrapper on the compiler path: CMake finds the LTO
+  archiver by looking for `gcc-ar` next to the compiler it was given, so a shim makes
+  `CMAKE_CXX_COMPILER_AR` come back NOTFOUND and the static library link dies. The
+  `gcc-ar-10`/`gcc-ranlib-10` wrappers are named explicitly as well, and configure is
+  checked for a NOTFOUND archiver before the build starts.
 - **Unit tests run under `qemu-aarch64-static`** as part of the build, including the JIT
   tests that check the recompiler against the interpreter instruction by instruction.
   `-f skip_tests=true` (or `SKIP_TESTS=1`) turns them off.

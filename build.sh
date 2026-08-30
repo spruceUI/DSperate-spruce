@@ -31,17 +31,13 @@ export DSP_NM="$(command -v ${CROSS}-gcc-nm-${CROSS_GCC})"
 export DSP_STRIP="$(command -v ${CROSS}-strip)"
 READELF="${CROSS}-readelf"
 
-# ccache through named shims rather than the /usr/lib/ccache symlinks, so the
-# version-suffixed cross compiler is unambiguous.
+# ccache is attached as a CMake compiler launcher, not as a wrapper script on
+# the compiler path, so that CMake still sees the real compiler and can find
+# gcc-ar beside it (see toolchain-aarch64.cmake).
+export DSP_CC="$(command -v ${CROSS}-gcc-${CROSS_GCC})"
+export DSP_CXX="$(command -v ${CROSS}-g++-${CROSS_GCC})"
 export CCACHE_DIR="${CCACHE_DIR:-/ccache}"
 mkdir -p "$CCACHE_DIR"
-for pair in "cc:gcc" "cxx:g++"; do
-    shim="/usr/local/bin/dsp-${pair%%:*}"
-    printf '#!/bin/sh\nexec ccache %s-%s-%s "$@"\n' "$CROSS" "${pair##*:}" "$CROSS_GCC" > "$shim"
-    chmod +x "$shim"
-done
-export DSP_CC=/usr/local/bin/dsp-cc
-export DSP_CXX=/usr/local/bin/dsp-cxx
 ccache --max-size=2G
 ccache --zero-stats
 
@@ -110,6 +106,7 @@ cmake -S . -B build -G Ninja \
 # working binary, just a slow one with nothing in any log to say why.
 grep -q '^DSPERATE_JIT:BOOL=ON'  build/CMakeCache.txt || { echo "ERROR: JIT disabled by configure"; exit 1; }
 grep -q '^DSPERATE_NEON:BOOL=ON' build/CMakeCache.txt || { echo "ERROR: NEON disabled by configure"; exit 1; }
+! grep -q 'COMPILER_AR:FILEPATH=.*NOTFOUND' build/CMakeCache.txt || { echo "ERROR: no LTO archiver; the static library link would fail"; exit 1; }
 [ -d build/src/frontend/sdl ] || { echo "ERROR: SDL2 not found, no SDL frontend"; exit 1; }
 
 echo "=== Building ==="
