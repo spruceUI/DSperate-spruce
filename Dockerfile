@@ -34,8 +34,16 @@ RUN dpkg --add-architecture arm64 && \
     gcc-10-aarch64-linux-gnu \
     g++-10-aarch64-linux-gnu \
     qemu-user-static \
-    # DSperate links only SDL2; ALSA and Wayland are dlopen'd at runtime
-    libsdl2-dev:arm64 \
+    # For building SDL2 from source. focal's libsdl2-dev is 2.0.10, which is
+    # older than any SDL2 spruce ships and too old to compile DSperate
+    # (SDL_TouchFingerEvent.windowID landed in 2.0.12), so we build our own and
+    # deliberately do NOT install libsdl2-dev.
+    libwayland-dev:arm64 \
+    libwayland-bin \
+    libxkbcommon-dev:arm64 \
+    libegl1-mesa-dev:arm64 \
+    libgles2-mesa-dev:arm64 \
+    libasound2-dev:arm64 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY toolchain-aarch64.cmake /toolchain-aarch64.cmake

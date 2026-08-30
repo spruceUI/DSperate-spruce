@@ -8,6 +8,13 @@ SKIP_TESTS="${SKIP_TESTS:-0}"
 CROSS_GCC="${CROSS_GCC:-10}"
 CROSS=aarch64-linux-gnu
 
+# Pinned to the OLDEST SDL2 spruce ships, on purpose. Compiling against
+# the fleet floor means we can never reach for an API newer than the
+# oldest device has - the same discipline as the glibc floor below.
+# (Shipped: 2.26.1 on PICO8/Flip and the NDS SmartPro libs, 2.26.5 on
+# MEDIA, 2.30.10 on NDS Flip, 2.32.0 on PyUI dll and spruce/flip.)
+SDL2_VERSION="${SDL2_VERSION:-2.26.1}"
+
 # Every spruce aarch64 device is a Cortex-A53 (H700) or Cortex-A55 (RK3566,
 # A133P, TrimUI). -mtune only changes instruction scheduling, never the
 # instruction set, so the binary stays generic ARMv8-A and runs on both.
@@ -42,13 +49,70 @@ ccache --max-size=2G
 ccache --zero-stats
 
 # pkg-config must see the arm64 multiarch .pc files, not the host's.
-export PKG_CONFIG_PATH=/usr/lib/${CROSS}/pkgconfig
-export PKG_CONFIG_LIBDIR=/usr/lib/${CROSS}/pkgconfig
+# /usr/share/pkgconfig too: wayland-scanner.pc lives there (it is
+# arch-independent, and SDL2's configure looks it up to find the host scanner).
+export PKG_CONFIG_PATH=/usr/lib/${CROSS}/pkgconfig:/usr/share/pkgconfig
+export PKG_CONFIG_LIBDIR=/usr/lib/${CROSS}/pkgconfig:/usr/share/pkgconfig
 export PKG_CONFIG_SYSROOT_DIR=
 
 echo "=== Toolchain ==="
 "$DSP_CXX" --version | head -1
 cmake --version | head -1
+
+# ============================================================
+# SDL2 from source
+#
+# focal ships SDL 2.0.10. DSperate needs 2.0.12 for
+# SDL_TouchFingerEvent.windowID (it routes the touchscreen to the window the
+# touch landed in) and 2.0.22 for SDL_SysWMinfo's wl.xdg_toplevel, which
+# display_wl.cpp reaches for behind a SDL_VERSION_ATLEAST(2,0,18) guard - so
+# 2.0.18 through 2.0.20 would compile-fail on that member. 2.26.1 clears both
+# and is our fleet floor.
+#
+# SDL 2.26 vendors its own wayland protocol XML and needs only
+# wayland-client >= 1.18, which focal has exactly - no wayland-protocols
+# package required.
+#
+# Built to link against, not to ship: the device supplies libSDL2 at runtime.
+# ============================================================
+PREFIX=/build/local
+mkdir -p "$PREFIX"
+
+echo "=== Building SDL2 ${SDL2_VERSION} ==="
+cd /build
+wget -q "https://github.com/libsdl-org/SDL/releases/download/release-${SDL2_VERSION}/SDL2-${SDL2_VERSION}.tar.gz"
+tar xf "SDL2-${SDL2_VERSION}.tar.gz"
+cd "SDL2-${SDL2_VERSION}"
+./configure \
+    --host=${CROSS} \
+    --prefix="$PREFIX" \
+    --enable-shared \
+    --disable-static \
+    --enable-video-wayland \
+    --disable-video-x11 \
+    --disable-video-rpi \
+    --disable-oss \
+    --disable-esd \
+    --disable-arts \
+    CC="ccache ${CROSS}-gcc-${CROSS_GCC}" \
+    CXX="ccache ${CROSS}-g++-${CROSS_GCC}"
+make -j"$(nproc)"
+make install
+cd /build
+
+# display_wl.cpp reads wm.info.wl, and SDL_syswm.h only declares that member
+# when SDL was built with wayland. If configure quietly dropped wayland - a
+# missing xkbcommon or egl .pc is enough - the failure surfaces 200 lines later
+# as a confusing error about a union member, so check it here.
+grep -q '^#define SDL_VIDEO_DRIVER_WAYLAND' "$PREFIX/include/SDL2/SDL_config.h" || {
+    echo "ERROR: SDL2 built without wayland; display_wl.cpp cannot compile"
+    exit 1
+}
+
+# Ahead of the system path so DSperate's pkg_check_modules finds ours.
+export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
+export PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PKG_CONFIG_LIBDIR"
+echo "SDL2 in use: $(pkg-config --modversion sdl2)"
 
 # ============================================================
 # Source
@@ -87,6 +151,7 @@ LINK_FLAGS="${LINK_FLAGS} -static-libstdc++ -static-libgcc"
 # The core is built with LTO, which recompiles at link time against whatever
 # the link command names, so the arch flags have to be repeated here.
 LINK_FLAGS="${LINK_FLAGS} ${ARCH_FLAGS}"
+LINK_FLAGS="${LINK_FLAGS} -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
 LINK_FLAGS="${LINK_FLAGS} -L/usr/lib/${CROSS} -Wl,-rpath-link,/usr/lib/${CROSS}"
 
 echo "=== Configuring ==="
@@ -199,6 +264,7 @@ committed:  ${DSPERATE_DATE}
 built:      $(date -u +%Y-%m-%dT%H:%M:%SZ)
 toolchain:  $("$DSP_CXX" --version | head -1) (Ubuntu 20.04 multiarch)
 glibc floor: ${GLIBC_MAX}
+sdl2:       ${SDL2_VERSION} (built from source, linked not bundled)
 flags:      ${COMMON_FLAGS}
 EOF
 

@@ -65,9 +65,20 @@ dumped from your own console. None are included here, and none can be.
 - **libstdc++ and libgcc are static.** Several devices ship a libstdc++ older than this
   toolchain's. glibc stays dynamic — it is the floor being matched, not something to
   carry.
-- **SDL2 comes from the device.** Linked, not bundled: `/usr/trimui/lib` on TrimUI,
-  `spruce/flip/lib` on Flip, `App/PyUI/dll-mali` on the Anbernic XX line. Built against
-  focal's SDL 2.0.10; every SDL symbol DSperate uses predates that.
+- **SDL2 is built from source at 2.26.1, linked but not bundled.** The device supplies
+  libSDL2 at runtime — `/usr/trimui/lib` on TrimUI, `spruce/flip/lib` on Flip,
+  `App/PyUI/dll-mali` on the Anbernic XX line. focal's own libsdl2-dev is 2.0.10 and is
+  deliberately not installed: DSperate needs 2.0.12 for `SDL_TouchFingerEvent.windowID`
+  (which routes the touchscreen to the window a touch landed in) and 2.0.22 for
+  `SDL_SysWMinfo`'s `wl.xdg_toplevel`, which `display_wl.cpp` reaches for behind a
+  `SDL_VERSION_ATLEAST(2,0,18)` guard — so 2.0.18 through 2.0.20 would compile-fail on
+  that member too. 2.26.1 clears both, and it is the **oldest SDL2 spruce ships**
+  (2.26.1 / 2.26.5 / 2.30.10 / 2.32.0 across the tree), so compiling against it means we
+  can never reach for an API the oldest device lacks — the same discipline as the glibc
+  floor. SDL 2.26 vendors its own wayland protocol XML and needs only
+  `wayland-client >= 1.18`, which focal has exactly, so no wayland-protocols package is
+  involved. The build asserts `SDL_VIDEO_DRIVER_WAYLAND` survived configure, because
+  without it `display_wl.cpp` fails 200 lines later on a union member.
 - **ALSA and Wayland are dlopen'd by DSperate itself**, so neither is a link-time
   dependency and neither needs bundling. The Wayland path is dead on our devices anyway —
   SDL uses KMSDRM or fbdev there — and it degrades by itself.
