@@ -101,8 +101,11 @@ cmake -S . -B build -G Ninja \
 # 32-bit build is interpreter + portable renderer. If either of these ever turns
 # ON here it means somebody added an ARM32 backend, and this script is lying
 # about what it produced.
-grep -q '^DSPERATE_JIT:BOOL=OFF'  build/CMakeCache.txt || echo "NOTE: JIT is ON in a 32-bit build - an ARM32 backend exists now?"
-grep -q '^DSPERATE_NEON:BOOL=OFF' build/CMakeCache.txt || echo "NOTE: NEON is ON in a 32-bit build"
+# compile_commands.json, not CMakeCache.txt: option() leaves the cache entry at
+# its ON default even after CMakeLists.txt turns these off with a plain set(),
+# so a cache grep answers the wrong question in both directions.
+! grep -q -- '-DDSPERATE_JIT=1'  build/compile_commands.json || echo "NOTE: JIT is compiled in on a 32-bit build - an ARM32 backend exists now?"
+! grep -q -- '-DDSPERATE_NEON=1' build/compile_commands.json || echo "NOTE: NEON kernels are compiled in on a 32-bit build"
 
 echo "=== Building ==="
 cmake --build build -j"$(nproc)"
