@@ -1,0 +1,22 @@
+name: Build All
+
+on:
+  workflow_dispatch:
+    inputs:
+      dsperate_version:
+        description: 'DSperate branch/tag/commit'
+        default: 'main'
+      skip_tests:
+        description: 'Skip the qemu-aarch64 unit tests'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  universal:
+    uses: ./.github/workflows/build-universal.yml
+    with:
+      dsperate_version: ${{ inputs.dsperate_version }}
+      skip_tests: ${{ inputs.skip_tests }}
