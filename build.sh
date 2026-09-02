@@ -206,7 +206,7 @@ check_floor() {
 }
 
 echo "=== glibc floor ==="
-check_floor build/src/frontend/cli/dsperate-headless
+check_floor build/src/frontend/headless/dsperate-headless
 check_floor build/src/frontend/sdl/dsperate
 
 echo "=== Shared library dependencies ==="
