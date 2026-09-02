@@ -210,7 +210,7 @@ check_floor build/src/frontend/headless/dsperate-headless
 check_floor build/src/frontend/sdl/dsperate
 
 echo "=== Shared library dependencies ==="
-for b in build/src/frontend/cli/dsperate-headless build/src/frontend/sdl/dsperate; do
+for b in build/src/frontend/headless/dsperate-headless build/src/frontend/sdl/dsperate; do
     echo "  $(basename "$b"): $($READELF -d "$b" | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | tr '\n' ' ')"
 done
 
@@ -221,7 +221,7 @@ echo "=== Collecting output ==="
 rm -rf "$OUTPUT_DIR"/*
 mkdir -p "$OUTPUT_DIR/libs" "$OUTPUT_DIR/configs"
 
-cp build/src/frontend/cli/dsperate-headless     "$OUTPUT_DIR/"
+cp build/src/frontend/headless/dsperate-headless     "$OUTPUT_DIR/"
 cp build/src/frontend/sdl/dsperate              "$OUTPUT_DIR/"
 "$DSP_STRIP" -s "$OUTPUT_DIR/dsperate-headless" "$OUTPUT_DIR/dsperate"
 
