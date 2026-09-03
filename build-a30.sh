@@ -89,7 +89,7 @@ cmake -S . -B build -G Ninja \
     -DCMAKE_C_FLAGS="$COMMON_FLAGS" \
     -DCMAKE_CXX_FLAGS="$COMMON_FLAGS" \
     -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
-    -DDSPERATE_CLI=ON \
+    -DDSPERATE_HEADLESS=ON \
     -DDSPERATE_SDL=ON \
     -DDSPERATE_TESTS=ON
 
@@ -101,8 +101,15 @@ cmake -S . -B build -G Ninja \
 # 32-bit build is interpreter + portable renderer. If either of these ever turns
 # ON here it means somebody added an ARM32 backend, and this script is lying
 # about what it produced.
-grep -q '^DSPERATE_JIT:BOOL=OFF'  build/CMakeCache.txt || echo "NOTE: JIT is ON in a 32-bit build - an ARM32 backend exists now?"
-grep -q '^DSPERATE_NEON:BOOL=OFF' build/CMakeCache.txt || echo "NOTE: NEON is ON in a 32-bit build"
+#
+# compile_commands.json, not CMakeCache.txt. Upstream declares these with
+# option(), so the cache entry keeps its ON default; the non-aarch64 branch of
+# CMakeLists.txt turns them off with a plain set(), which shadows the cache
+# without rewriting it. On this target the cache therefore says ON on every
+# successful build, and a cache grep prints the "an ARM32 backend exists now?"
+# note every time. The compile definition is the effective value.
+! grep -q -- '-DDSPERATE_JIT=1'  build/compile_commands.json || echo "NOTE: JIT is compiled in on a 32-bit build - an ARM32 backend exists now?"
+! grep -q -- '-DDSPERATE_NEON=1' build/compile_commands.json || echo "NOTE: NEON kernels are compiled in on a 32-bit build"
 
 echo "=== Building ==="
 cmake --build build -j"$(nproc)"
@@ -132,11 +139,11 @@ check_floor() {
     fi
 }
 echo "=== glibc floor ==="
-check_floor build/src/frontend/cli/dsperate
-check_floor build/src/frontend/sdl/dsperate-sdl
+check_floor build/src/frontend/headless/dsperate-headless
+check_floor build/src/frontend/sdl/dsperate
 
 echo "=== Shared library dependencies ==="
-for b in build/src/frontend/cli/dsperate build/src/frontend/sdl/dsperate-sdl; do
+for b in build/src/frontend/headless/dsperate-headless build/src/frontend/sdl/dsperate; do
     echo "  $(basename "$b"): $($READELF -d "$b" | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | tr '\n' ' ')"
 done
 
@@ -146,9 +153,12 @@ done
 echo "=== Collecting output ==="
 rm -rf "${OUTPUT_DIR:?}"/*
 mkdir -p "$OUTPUT_DIR/configs"
-cp build/src/frontend/cli/dsperate     "$OUTPUT_DIR/dsperate"
-cp build/src/frontend/sdl/dsperate-sdl "$OUTPUT_DIR/dsperate-sdl"
-"$DSP_STRIP" -s "$OUTPUT_DIR/dsperate" "$OUTPUT_DIR/dsperate-sdl"
+# Upstream 1.0.0 swapped these two names round: the SDL frontend is now called
+# "dsperate" and the headless one "dsperate-headless". "dsperate" in this
+# tarball used to be the CLI binary and is now the one a device runs.
+cp build/src/frontend/sdl/dsperate                "$OUTPUT_DIR/dsperate"
+cp build/src/frontend/headless/dsperate-headless  "$OUTPUT_DIR/dsperate-headless"
+"$DSP_STRIP" -s "$OUTPUT_DIR/dsperate" "$OUTPUT_DIR/dsperate-headless"
 cp configs/*.ini "$OUTPUT_DIR/configs/"
 cp LICENSE README.md "$OUTPUT_DIR/"
 
