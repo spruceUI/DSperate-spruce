@@ -89,6 +89,10 @@ LINK_FLAGS="${LINK_FLAGS} -static-libstdc++ -static-libgcc"
 # then rejects.
 LINK_FLAGS="${LINK_FLAGS} ${ARCH_FLAGS}"
 
+# Upstream 1.6.0 grew a Wayland dmabuf scanout tier and builds it whenever the
+# SDL2 it compiles against has wayland in it. The A30 sysroot's SDL2 has none,
+# so upstream's own configure check would drop the tier here anyway - but say
+# it outright rather than lean on a probe, same as the aarch64 target.
 echo "=== Configuring ==="
 cmake -S . -B build -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE=/toolchain-a30.cmake \
@@ -98,6 +102,7 @@ cmake -S . -B build -G Ninja \
     -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
     -DDSPERATE_HEADLESS=ON \
     -DDSPERATE_SDL=ON \
+    -DDSPERATE_WAYLAND=OFF \
     -DDSPERATE_TESTS=ON
 
 ! grep -q 'COMPILER_AR:FILEPATH=.*NOTFOUND' build/CMakeCache.txt || { echo "ERROR: no LTO archiver"; exit 1; }

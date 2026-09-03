@@ -100,12 +100,12 @@ make -j"$(nproc)"
 make install
 cd /build
 
-# display_wl.cpp reads wm.info.wl, and SDL_syswm.h only declares that member
-# when SDL was built with wayland. If configure quietly dropped wayland - a
-# missing xkbcommon or egl .pc is enough - the failure surfaces 200 lines later
-# as a confusing error about a union member, so check it here.
+# Nothing we build needs wayland any more (DSPERATE_WAYLAND=OFF below), but a
+# configure that silently drops an option we asked for - a missing xkbcommon or
+# egl .pc is enough - is worth catching here rather than wondering later which
+# other --enable went the same way.
 grep -q '^#define SDL_VIDEO_DRIVER_WAYLAND' "$PREFIX/include/SDL2/SDL_config.h" || {
-    echo "ERROR: SDL2 built without wayland; display_wl.cpp cannot compile"
+    echo "ERROR: SDL2 configure dropped wayland despite --enable-video-wayland"
     exit 1
 }
 
@@ -161,6 +161,12 @@ LINK_FLAGS="${LINK_FLAGS} ${ARCH_FLAGS}"
 LINK_FLAGS="${LINK_FLAGS} -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
 LINK_FLAGS="${LINK_FLAGS} -L/usr/lib/${CROSS} -Wl,-rpath-link,/usr/lib/${CROSS}"
 
+# Upstream 1.6.0 grew a Wayland dmabuf scanout tier and builds it whenever the
+# SDL2 it compiles against has wayland in it. Ours does (--enable-video-wayland
+# above), the device SDL2s do not, and no spruce device runs a compositor - so
+# left to autodetect we would ship a dead tier compiled against an
+# SDL_SysWMinfo layout the runtime SDL2 does not share. Off explicitly, which
+# is also what upstream asks integrators to do rather than patch it out.
 echo "=== Configuring ==="
 cmake -S . -B build -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE=/toolchain-aarch64.cmake \
@@ -172,6 +178,7 @@ cmake -S . -B build -G Ninja \
     -DDSPERATE_NEON=ON \
     -DDSPERATE_HEADLESS=ON \
     -DDSPERATE_SDL=ON \
+    -DDSPERATE_WAYLAND=OFF \
     -DDSPERATE_TESTS=ON
 
 # A configure that quietly fell back to the interpreter would still produce a

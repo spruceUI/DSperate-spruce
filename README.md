@@ -102,11 +102,16 @@ dumped from your own console. None are included here, and none can be.
   can never reach for an API the oldest device lacks — the same discipline as the glibc
   floor. SDL 2.26 vendors its own wayland protocol XML and needs only
   `wayland-client >= 1.18`, which focal has exactly, so no wayland-protocols package is
-  involved. The build asserts `SDL_VIDEO_DRIVER_WAYLAND` survived configure, because
-  without it `display_wl.cpp` fails 200 lines later on a union member.
-- **ALSA and Wayland are dlopen'd by DSperate itself**, so neither is a link-time
-  dependency and neither needs bundling. The Wayland path is dead on our devices anyway —
-  SDL uses KMSDRM or fbdev there — and it degrades by itself.
+  involved. The build still asserts `SDL_VIDEO_DRIVER_WAYLAND` survived configure — not
+  because anything needs it now, but as a canary for options configure drops in silence.
+- **`-DDSPERATE_WAYLAND=OFF` on every target.** Upstream 1.6.0 builds a Wayland dmabuf
+  scanout tier whenever the SDL2 it compiles against has wayland in it, and ours does.
+  The device SDL2s are KMSDRM or fbdev builds with none and no spruce device runs a
+  compositor, so the tier would be dead code compiled against an `SDL_SysWMinfo` layout
+  the runtime SDL2 does not share. Upstream's advice to integrators is to pass the flag
+  rather than patch the tier out, which is also what retired our `0001` patch.
+- **ALSA is dlopen'd by DSperate itself**, so it is not a link-time dependency and does
+  not need bundling.
 - **`-mtune=cortex-a55`** (override with `ARCH_FLAGS`). Every spruce aarch64 device is a
   Cortex-A53 or A55; `-mtune` changes scheduling only, never the instruction set, so the
   binary stays generic ARMv8-A. It is repeated in the link flags because the core is
@@ -132,13 +137,6 @@ docker run --rm -e DSPERATE_VERSION=main -v "$PWD/output:/output" dsperate-build
 ## Patches
 
 `patches/` is applied to every target — `*.patch` via `git apply`, `*.py` via `python3`.
-
-- `0001-dmabuf-guard-no-wayland.py` — `display_wl.cpp` reads `wm.info.wl`, but
-  `SDL_syswm.h` only declares that member when SDL was built with wayland. Every embedded
-  SDL2 on a 32-bit spruce device is a Mali fbdev build with none (the A30's has zero
-  wayland strings), so the file will not compile there. Guards `DmabufOut::open`, which
-  already returns false to mean "no dmabuf, use the normal blit" — the same answer the
-  runtime check gives on such a device. No-op where SDL does have wayland.
 
 - `0002-screen-rotation.py` — adds `DS_ROTATE=0|90|180|270`. DSperate has no rotation of
   any kind, so on a portrait-mounted panel everything renders sideways. The A30's is at
