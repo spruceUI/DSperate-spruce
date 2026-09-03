@@ -170,12 +170,12 @@ cmake -S . -B build -G Ninja \
 # A configure that quietly fell back to the interpreter would still produce a
 # working binary, just a slow one with nothing in any log to say why.
 #
-# Checked against compile_commands.json, NOT CMakeCache.txt. Upstream declares
-# these with option(), so the cache entry keeps its ON default even when
+# Checked against compile_commands.json, NOT CMakeCache.txt. DSperate declares
+# these with option(), so the cache entry keeps the ON default even when
 # CMakeLists.txt turns them off - it does that with a plain set(), which
 # shadows the cache without rewriting it. A cache grep therefore passes whether
-# the JIT was built or not, which makes it exactly the silent fallback it was
-# supposed to catch. The compile definition is the effective value.
+# the JIT was built or not, which makes it exactly the silent-fallback check it
+# was supposed to be. The compile definition is the effective value.
 grep -q -- '-DDSPERATE_JIT=1'  build/compile_commands.json || { echo "ERROR: JIT not compiled in"; exit 1; }
 grep -q -- '-DDSPERATE_NEON=1' build/compile_commands.json || { echo "ERROR: NEON kernels not compiled in"; exit 1; }
 ! grep -q 'COMPILER_AR:FILEPATH=.*NOTFOUND' build/CMakeCache.txt || { echo "ERROR: no LTO archiver; the static library link would fail"; exit 1; }

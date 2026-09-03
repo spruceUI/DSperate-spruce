@@ -101,13 +101,9 @@ cmake -S . -B build -G Ninja \
 # 32-bit build is interpreter + portable renderer. If either of these ever turns
 # ON here it means somebody added an ARM32 backend, and this script is lying
 # about what it produced.
-#
-# compile_commands.json, not CMakeCache.txt. Upstream declares these with
-# option(), so the cache entry keeps its ON default; the non-aarch64 branch of
-# CMakeLists.txt turns them off with a plain set(), which shadows the cache
-# without rewriting it. On this target the cache therefore says ON on every
-# successful build, and a cache grep prints the "an ARM32 backend exists now?"
-# note every time. The compile definition is the effective value.
+# compile_commands.json, not CMakeCache.txt: option() leaves the cache entry at
+# its ON default even after CMakeLists.txt turns these off with a plain set(),
+# so a cache grep answers the wrong question in both directions.
 ! grep -q -- '-DDSPERATE_JIT=1'  build/compile_commands.json || echo "NOTE: JIT is compiled in on a 32-bit build - an ARM32 backend exists now?"
 ! grep -q -- '-DDSPERATE_NEON=1' build/compile_commands.json || echo "NOTE: NEON kernels are compiled in on a 32-bit build"
 
