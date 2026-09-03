@@ -140,31 +140,45 @@ docker run --rm -e DSPERATE_VERSION=main -v "$PWD/output:/output" dsperate-build
   already returns false to mean "no dmabuf, use the normal blit" — the same answer the
   runtime check gives on such a device. No-op where SDL does have wayland.
 
-- `0002-screen-rotation.py` — adds `DS_ROTATE=0|90|180|270`. The A30's panel is mounted
-  at 270° (spruce's own PyUI reports `screen_rotation() == 270` for it, and vTree passes
-  `--rotate=3` there), and DSperate has no rotation of any kind, so everything renders
-  sideways. The layout keeps working in an unrotated logical viewport — `out_size()`
-  reports the swapped size, and since `layout()`, `build_scale()` and `map_point()` all
-  size themselves from it, the whole geometry rotates with no other changes — and only
-  the present rotates, via a logical-sized render target blitted with
-  `SDL_RenderCopyEx`. Rotating a WxH rect about its own centre gives an HxW footprint,
-  so a logical rect centred in the window lands exactly on the panel. Free on a Mali.
-  Inert unless `DS_ROTATE` is set.
+- `0002-screen-rotation.py` — adds `DS_ROTATE=0|90|180|270`. DSperate has no rotation of
+  any kind, so on a portrait-mounted panel everything renders sideways. The A30's is at
+  270°: PyUI's `miyoo_a30.py` reports `screen_rotation() == 270`, ScummVM exports
+  `DISPLAY_ROTATION=270` there, and so does `repairSD.sh`.
+
+  The layout keeps working in an unrotated logical viewport — `out_size()` reports the
+  swapped size, and since `layout()`, `build_scale()` and `map_point()` all size
+  themselves from it, the whole geometry rotates with no other changes — and only the
+  present rotates, via a logical-sized render target blitted with `SDL_RenderCopyEx`.
+  Rotating a WxH rect about its own centre gives an HxW footprint, so a logical rect
+  centred in the window lands exactly on the panel. Free on a Mali. Inert unless
+  `DS_ROTATE` is set, so the aarch64 build is unaffected.
 
   Two limits, neither reachable on the devices this is for: per-scanline scaling is
-  disabled while rotating (it writes into the window surface with no renderer in play,
-  so there is nothing to rotate with — and it is off by default outside Wayland anyway),
-  and `SDL_FINGER*` touch is not remapped (the mouse path via `map_point` is). The A30
-  and Mini have neither a touchscreen nor a mouse.
+  disabled while rotating (it writes into the window surface with no renderer in play, so
+  there is nothing to rotate with), and `SDL_FINGER*` touch is not remapped (the mouse
+  path via `map_point` is). The A30 has neither a touchscreen nor a mouse.
 
 ## Running it on an A30
 
+`DS_ROTATE` is an **environment variable, not a command-line flag**. Unset, every code
+path is exactly what it was before, and the image is sideways.
+
 ```sh
-DS_ROTATE=270 ./dsperate-sdl game.nds --fullscreen
+DS_ROTATE=270 ./dsperate game.nds \
+  --bios9 /mnt/SDCARD/BIOS/nds/bios9.bin \
+  --bios7 /mnt/SDCARD/BIOS/nds/bios7.bin \
+  --firmware /mnt/SDCARD/BIOS/nds/firmware.bin \
+  --fullscreen
 ```
 
-If the image comes out upside down, use `DS_ROTATE=90` — which of the two is right is a
-property of the panel, and this has not been on hardware yet.
+Anything other than 0/90/180/270 prints `DS_ROTATE=<x> ignored; use 0, 90, 180 or 270`
+and carries on unrotated. If the image comes out upside down, use `DS_ROTATE=90` — which
+of the two is right is a property of the panel, and it has not been confirmed on hardware
+yet. No rebuild is needed to try the other one.
+
+Two messages worth watching for on stderr: `DS_ROTATE: render target unavailable (…); not
+rotating` means the renderer could not create a target texture and gave up, and
+`DS_ROTATE=270: scanline scaling cannot rotate; using the renderer` is informational.
 
 ## Not done here
 

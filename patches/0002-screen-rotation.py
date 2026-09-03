@@ -162,12 +162,15 @@ def main() -> int:
     )
 
     # ---- draw(): render into the target, then blit it rotated ----
+    # 1.1.0 put a "if (!ren_) return;" guard at the top of draw() for the
+    # scanline tiers, which have no renderer. SDL_SetRenderTarget needs one, so
+    # the rotation setup goes after the guard, not before it.
     cpp = edit(
         cpp,
-        "void Display::draw(const u32* const fb[SCREENS]) {\n"
+        "  if (!ren_) return;\n"
         "  SDL_SetRenderDrawColor(ren_, 0, 0, 0, 255);\n"
         "  SDL_RenderClear(ren_);\n",
-        "void Display::draw(const u32* const fb[SCREENS]) {\n"
+        "  if (!ren_) return;\n"
         "  const bool rotating = rot_ && rt_ && SDL_SetRenderTarget(ren_, rt_) == 0;\n"
         "  SDL_SetRenderDrawColor(ren_, 0, 0, 0, 255);\n"
         "  SDL_RenderClear(ren_);\n",
