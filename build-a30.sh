@@ -60,13 +60,20 @@ git checkout "$DSPERATE_VERSION"
 DSPERATE_SHA="$(git rev-parse HEAD)"
 DSPERATE_DATE="$(git log -1 --format=%cI)"
 
+# A patch that no longer applies is fatal. It used to be written as
+# `cmd && echo Applied:`, where set -e does not fire because the failure is on
+# the left of &&, so a drifted patch produced a green build with the feature
+# silently missing from the binary. Every patch here is required; none is
+# optional, so there is nothing to be lenient about.
 for patch in /patches/*.patch; do
     [ -f "$patch" ] || continue
-    git apply "$patch" && echo "Applied: $(basename "$patch")"
+    git apply "$patch" || { echo "ERROR: $(basename "$patch") did not apply"; exit 1; }
+    echo "Applied: $(basename "$patch")"
 done
 for patch in /patches/*.py; do
     [ -f "$patch" ] || continue
-    python3 "$patch" && echo "Applied: $(basename "$patch")"
+    python3 "$patch" || { echo "ERROR: $(basename "$patch") did not apply"; exit 1; }
+    echo "Applied: $(basename "$patch")"
 done
 
 # ============================================================
