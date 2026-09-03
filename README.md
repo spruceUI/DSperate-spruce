@@ -63,8 +63,8 @@ gh release download beta-main -p "dsperate-aarch64.tar.gz" -R spruceUI/DSperate-
 ## Output structure
 
 ```
-dsperate            # headless CLI harness (traces, frame dumps, benchmarks)
-dsperate-sdl        # the SDL2 frontend, what a device runs
+dsperate            # the SDL2 frontend, what a device runs
+dsperate-headless   # headless harness (traces, frame dumps, benchmarks)
 configs/            # upstream's ready-made settings files, incl. drastic.ini
                     # and advdrastic.ini (Knulli's "Advanced DraStic" hotkeys)
 libs/               # non-device-provided shared libraries (usually absent)
@@ -82,7 +82,7 @@ dumped from your own console. None are included here, and none can be.
   `GLIBCXX_`/`CXXABI_` symbol survives, which would mean `-static-libstdc++` silently
   did not take.
 - **`-pthread` is added by this build.** DSperate uses `std::thread` (the 3D raster
-  workers, the engine-B line worker, the CLI) but never links `Threads::Threads`.
+  workers, the engine-B line worker, the headless harness) but never links `Threads::Threads`.
   Upstream never notices: glibc 2.34 folded libpthread into libc, so on a 24.04 runner
   the symbols are already there. At 2.31 they are in `libpthread.so.0` and must be asked
   for. `-Wl,--no-as-needed` goes with it because CMake puts linker flags ahead of the

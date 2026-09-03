@@ -89,7 +89,7 @@ cmake -S . -B build -G Ninja \
     -DCMAKE_C_FLAGS="$COMMON_FLAGS" \
     -DCMAKE_CXX_FLAGS="$COMMON_FLAGS" \
     -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
-    -DDSPERATE_CLI=ON \
+    -DDSPERATE_HEADLESS=ON \
     -DDSPERATE_SDL=ON \
     -DDSPERATE_TESTS=ON
 
@@ -135,11 +135,11 @@ check_floor() {
     fi
 }
 echo "=== glibc floor ==="
-check_floor build/src/frontend/cli/dsperate
-check_floor build/src/frontend/sdl/dsperate-sdl
+check_floor build/src/frontend/headless/dsperate-headless
+check_floor build/src/frontend/sdl/dsperate
 
 echo "=== Shared library dependencies ==="
-for b in build/src/frontend/cli/dsperate build/src/frontend/sdl/dsperate-sdl; do
+for b in build/src/frontend/headless/dsperate-headless build/src/frontend/sdl/dsperate; do
     echo "  $(basename "$b"): $($READELF -d "$b" | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | tr '\n' ' ')"
 done
 
@@ -149,9 +149,12 @@ done
 echo "=== Collecting output ==="
 rm -rf "${OUTPUT_DIR:?}"/*
 mkdir -p "$OUTPUT_DIR/configs"
-cp build/src/frontend/cli/dsperate     "$OUTPUT_DIR/dsperate"
-cp build/src/frontend/sdl/dsperate-sdl "$OUTPUT_DIR/dsperate-sdl"
-"$DSP_STRIP" -s "$OUTPUT_DIR/dsperate" "$OUTPUT_DIR/dsperate-sdl"
+# Upstream 1.0.0 swapped these two names round: the SDL frontend is now called
+# "dsperate" and the headless one "dsperate-headless". "dsperate" in this
+# tarball used to be the CLI binary and is now the one a device runs.
+cp build/src/frontend/sdl/dsperate                "$OUTPUT_DIR/dsperate"
+cp build/src/frontend/headless/dsperate-headless  "$OUTPUT_DIR/dsperate-headless"
+"$DSP_STRIP" -s "$OUTPUT_DIR/dsperate" "$OUTPUT_DIR/dsperate-headless"
 cp configs/*.ini "$OUTPUT_DIR/configs/"
 cp LICENSE README.md "$OUTPUT_DIR/"
 

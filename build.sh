@@ -163,7 +163,7 @@ cmake -S . -B build -G Ninja \
     -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
     -DDSPERATE_JIT=ON \
     -DDSPERATE_NEON=ON \
-    -DDSPERATE_CLI=ON \
+    -DDSPERATE_HEADLESS=ON \
     -DDSPERATE_SDL=ON \
     -DDSPERATE_TESTS=ON
 
@@ -213,11 +213,11 @@ check_floor() {
 }
 
 echo "=== glibc floor ==="
-check_floor build/src/frontend/cli/dsperate
-check_floor build/src/frontend/sdl/dsperate-sdl
+check_floor build/src/frontend/headless/dsperate-headless
+check_floor build/src/frontend/sdl/dsperate
 
 echo "=== Shared library dependencies ==="
-for b in build/src/frontend/cli/dsperate build/src/frontend/sdl/dsperate-sdl; do
+for b in build/src/frontend/headless/dsperate-headless build/src/frontend/sdl/dsperate; do
     echo "  $(basename "$b"): $($READELF -d "$b" | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | tr '\n' ' ')"
 done
 
@@ -228,9 +228,9 @@ echo "=== Collecting output ==="
 rm -rf "$OUTPUT_DIR"/*
 mkdir -p "$OUTPUT_DIR/libs" "$OUTPUT_DIR/configs"
 
-cp build/src/frontend/cli/dsperate     "$OUTPUT_DIR/"
-cp build/src/frontend/sdl/dsperate-sdl "$OUTPUT_DIR/"
-"$DSP_STRIP" -s "$OUTPUT_DIR/dsperate" "$OUTPUT_DIR/dsperate-sdl"
+cp build/src/frontend/headless/dsperate-headless     "$OUTPUT_DIR/"
+cp build/src/frontend/sdl/dsperate              "$OUTPUT_DIR/"
+"$DSP_STRIP" -s "$OUTPUT_DIR/dsperate-headless" "$OUTPUT_DIR/dsperate"
 
 cp configs/*.ini "$OUTPUT_DIR/configs/"
 cp LICENSE README.md "$OUTPUT_DIR/"
@@ -255,8 +255,8 @@ collect_deps() {
         fi
     done
 }
+collect_deps "$OUTPUT_DIR/dsperate-headless"
 collect_deps "$OUTPUT_DIR/dsperate"
-collect_deps "$OUTPUT_DIR/dsperate-sdl"
 for so in "$OUTPUT_DIR"/libs/*.so*; do
     [ -f "$so" ] || continue
     "$DSP_STRIP" -s "$so" 2>/dev/null || true
