@@ -140,6 +140,24 @@ docker run --rm -e DSPERATE_VERSION=main -v "$PWD/output:/output" dsperate-build
   already returns false to mean "no dmabuf, use the normal blit" — the same answer the
   runtime check gives on such a device. No-op where SDL does have wayland.
 
+- `0002-screen-rotation.py` — adds `DS_ROTATE=0|90|180|270`. DSperate has no rotation of
+  any kind, so on a portrait-mounted panel everything renders sideways. The A30's is at
+  270°: PyUI's `miyoo_a30.py` reports `screen_rotation() == 270`, ScummVM exports
+  `DISPLAY_ROTATION=270` there, and so does `repairSD.sh`.
+
+  The layout keeps working in an unrotated logical viewport — `out_size()` reports the
+  swapped size, and since `layout()`, `build_scale()` and `map_point()` all size
+  themselves from it, the whole geometry rotates with no other changes — and only the
+  present rotates, via a logical-sized render target blitted with `SDL_RenderCopyEx`.
+  Rotating a WxH rect about its own centre gives an HxW footprint, so a logical rect
+  centred in the window lands exactly on the panel. Free on a Mali. Inert unless
+  `DS_ROTATE` is set, so the aarch64 build is unaffected.
+
+  Two limits, neither reachable on the devices this is for: per-scanline scaling is
+  disabled while rotating (it writes into the window surface with no renderer in play, so
+  there is nothing to rotate with), and `SDL_FINGER*` touch is not remapped (the mouse
+  path via `map_point` is). The A30 has neither a touchscreen nor a mouse.
+
 ## Not done here
 
 Wiring DSperate into spruceOS as an `Emu/NDS` emulator option alongside the three DraStic
