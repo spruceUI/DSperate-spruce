@@ -136,30 +136,18 @@ docker run --rm -e DSPERATE_VERSION=main -v "$PWD/output:/output" dsperate-build
 
 ## Patches
 
-`patches/` is applied to every target — `*.patch` via `git apply`, `*.py` via `python3`.
+`patches/` is applied to every target — `*.patch` via `git apply`, `*.py` via `python3`. A
+patch that no longer applies is fatal, so a drifted patch cannot produce a green build with
+the feature silently missing.
 
-- `0002-screen-rotation.py` — adds `DS_ROTATE=0|90|180|270`. DSperate has no rotation of
-  any kind, so on a portrait-mounted panel everything renders sideways. The A30's is at
-  270°: PyUI's `miyoo_a30.py` reports `screen_rotation() == 270`, ScummVM exports
-  `DISPLAY_ROTATION=270` there, and so does `repairSD.sh`.
-
-  The layout keeps working in an unrotated logical viewport — `out_size()` reports the
-  swapped size, and since `layout()`, `build_scale()` and `map_point()` all size
-  themselves from it, the whole geometry rotates with no other changes — and only the
-  present rotates, via a logical-sized render target blitted with `SDL_RenderCopyEx`.
-  Rotating a WxH rect about its own centre gives an HxW footprint, so a logical rect
-  centred in the window lands exactly on the panel. Free on a Mali. Inert unless
-  `DS_ROTATE` is set, so the aarch64 build is unaffected.
-
-  Two limits, neither reachable on the devices this is for: per-scanline scaling is
-  disabled while rotating (it writes into the window surface with no renderer in play, so
-  there is nothing to rotate with), and `SDL_FINGER*` touch is not remapped (the mouse
-  path via `map_point` is). The A30 has neither a touchscreen nor a mouse.
+It is **empty right now**: upstream 1.6.0 took both patches we carried — the no-wayland
+dmabuf guard and `DS_ROTATE` — and `patches/README.md` records what they were and what
+replaced them.
 
 ## Running it on an A30
 
-`DS_ROTATE` is an **environment variable, not a command-line flag**. Unset, every code
-path is exactly what it was before, and the image is sideways.
+The A30's panel is mounted at 270°. `DS_ROTATE` is an **environment variable, not a
+command-line flag** — unset, the image is sideways.
 
 ```sh
 DS_ROTATE=270 ./dsperate game.nds \
@@ -169,14 +157,21 @@ DS_ROTATE=270 ./dsperate game.nds \
   --fullscreen
 ```
 
-Anything other than 0/90/180/270 prints `DS_ROTATE=<x> ignored; use 0, 90, 180 or 270`
-and carries on unrotated. If the image comes out upside down, use `DS_ROTATE=90` — which
-of the two is right is a property of the panel, and it has not been confirmed on hardware
-yet. No rebuild is needed to try the other one.
+Since 1.6.0 this is upstream's own, and it belongs to the display-engine scaler tier: the
+hardware layer scales a DS-resolution canvas and NEON kernels do the rotate, which is the
+whole reason it exists on a Cortex-A7. The tier is auto wherever `/dev/disp` and `/dev/fb0`
+answer, so nothing has to ask for it. `--no-disp` forces it off.
 
-Two messages worth watching for on stderr: `DS_ROTATE: render target unavailable (…); not
-rotating` means the renderer could not create a target texture and gave up, and
-`DS_ROTATE=270: scanline scaling cannot rotate; using the renderer` is informational.
+The one line to check on stderr, because it says which tier actually opened:
+
+```
+video: display-engine scaler, rot 270, layout …
+```
+
+Without it we are on the SDL renderer, which has no rotation of its own — `DS_ROTATE` is
+read only on the disp path. `video.disp: /dev/disp not usable; using SDL` is the explicit
+version of the same news, and `disp: rotation <x> not supported` means `DS_ROTATE` was
+something other than 0/90/180/270.
 
 ## Not done here
 
