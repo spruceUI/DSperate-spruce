@@ -108,16 +108,38 @@ cmake -S . -B build -G Ninja \
 ! grep -q 'COMPILER_AR:FILEPATH=.*NOTFOUND' build/CMakeCache.txt || { echo "ERROR: no LTO archiver"; exit 1; }
 [ -d build/src/frontend/sdl ] || { echo "ERROR: SDL2 not found in sysroot, no SDL frontend"; exit 1; }
 
-# The inverse of the aarch64 target's check, and just as deliberate. DSperate's
-# recompiler emits AArch64 and its NEON kernels use A64-only intrinsics, so a
-# 32-bit build is interpreter + portable renderer. If either of these ever turns
-# ON here it means somebody added an ARM32 backend, and this script is lying
-# about what it produced.
+# What this target actually got, read rather than assumed. It used to be
+# assumed: the script hardcoded "jit: OFF / neon: OFF / expect it to be slow"
+# in BUILD_INFO on the reasoning that the recompiler emits AArch64 and the NEON
+# kernels use A64-only intrinsics. Upstream then wrote an ARM32 backend
+# (src/core/cpu/jit/a32) and an ARMv7-expressible kernel subset, so the tarball
+# shipped a build with a recompiler in it while its own BUILD_INFO called it an
+# interpreter. Derive both, and let BUILD_INFO say whatever is true.
 # compile_commands.json, not CMakeCache.txt: option() leaves the cache entry at
 # its ON default even after CMakeLists.txt turns these off with a plain set(),
 # so a cache grep answers the wrong question in both directions.
-! grep -q -- '-DDSPERATE_JIT=1'  build/compile_commands.json || echo "NOTE: JIT is compiled in on a 32-bit build - an ARM32 backend exists now?"
-! grep -q -- '-DDSPERATE_NEON=1' build/compile_commands.json || echo "NOTE: NEON kernels are compiled in on a 32-bit build"
+if grep -q -- '-DDSPERATE_JIT=1' build/compile_commands.json; then
+    JIT_STATE="ON   (upstream's ARM32 backend)"
+    _cpu="recompiler"
+else
+    JIT_STATE="OFF  (no ARM32 backend in this revision)"
+    _cpu="interpreter"
+fi
+if grep -q -- '-DDSPERATE_NEON=1' build/compile_commands.json; then
+    NEON_STATE="ON   (the ARMv7-expressible kernel subset)"
+    _gpu="NEON-subset renderer"
+else
+    NEON_STATE="OFF  (kernels use A64-only intrinsics)"
+    _gpu="portable C++ renderer"
+fi
+SPEED_NOTE="NOTE: ${_cpu} + ${_gpu}."
+# An if, not `[ ... ] && assign`: that list's exit status is the test's, and
+# set -e kills the script on the build where the test is false.
+if [ "$_cpu" = "interpreter" ]; then
+    SPEED_NOTE="${SPEED_NOTE} Expect it to be slow."
+fi
+echo "jit: ${JIT_STATE}"
+echo "neon: ${NEON_STATE}"
 
 echo "=== Building ==="
 cmake --build build -j"$(nproc)"
@@ -179,9 +201,9 @@ built:      $(date -u +%Y-%m-%dT%H:%M:%SZ)
 toolchain:  $("$DSP_CXX" --version | head -1) (A30 buildroot, glibc 2.23 sysroot)
 glibc floor: ${GLIBC_MAX}
 arch:       armhf, ${ARCH_FLAGS}
-jit:        OFF  (DSperate's recompiler emits AArch64 only)
-neon:       OFF  (kernels use A64-only intrinsics)
-NOTE: interpreter + portable C++ renderer. Expect it to be slow.
+jit:        ${JIT_STATE}
+neon:       ${NEON_STATE}
+${SPEED_NOTE}
 EOF
 
 echo "=== ccache stats ==="
