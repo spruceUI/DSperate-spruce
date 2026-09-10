@@ -205,7 +205,8 @@ if [ "$SKIP_TESTS" = "1" ]; then
     echo "=== Tests skipped (SKIP_TESTS=1) ==="
 else
     echo "=== Testing under qemu-aarch64 ==="
-    ( cd build && ctest --output-on-failure )
+    # test_input links the SDL2 built above; qemu-user's loader reads this
+    ( cd build && LD_LIBRARY_PATH="$PREFIX/lib" ctest --output-on-failure )
 fi
 
 # ============================================================
