@@ -35,8 +35,8 @@ echo "=== OpenSSL ${OPENSSL_VERSION} ==="
 wget -q "https://github.com/openssl/openssl/releases/download/OpenSSL_${OPENSSL_VERSION//./_}/openssl-${OPENSSL_VERSION}.tar.gz"
 tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
 ( cd "openssl-${OPENSSL_VERSION}" \
-  && ./Configure linux-armv4 shared no-tests --prefix="$DEPS" --openssldir=/etc/ssl \
-       --cross-compile-prefix="${CROSS}-" $CFLAGS \
+  && CC=gcc ./Configure linux-armv4 shared no-tests --prefix="$DEPS" --openssldir=/etc/ssl \
+       --cross-compile-prefix="${CROSS}-" \
   && make -j"$JOBS" && make install_sw )
 
 echo "=== curl ${CURL_VERSION} ==="
