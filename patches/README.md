@@ -4,7 +4,12 @@ Applied to every target before configure — `*.patch` via `git apply`, `*.py` v
 A patch that no longer applies is fatal, so the build cannot ship a binary with a feature
 silently missing (see `build.sh`).
 
-**The directory is empty on purpose.** Upstream took both patches into 1.6.0:
+- `0001-spruce-menu-colours.py` — the pause menu's seven ARGB constants in
+  `src/frontend/sdl/menu.cpp`, replaced with spruce's IGM palette (gold accent, spruce-green
+  headings, warm cream/gray text on near-black). Cosmetic only; anchored on the two constexpr
+  lines, so a palette change upstream fails the build instead of shipping blue.
+
+Upstream took the two earlier patches into 1.6.0:
 
 - `0001-dmabuf-guard-no-wayland.py` — guarded `DmabufOut::open` so `display_wl.cpp` would
   compile against an SDL2 built without wayland, which every embedded spruce SDL2 is.
