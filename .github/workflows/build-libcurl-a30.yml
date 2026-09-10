@@ -44,12 +44,12 @@ jobs:
         run: |
           mkdir -p output
           docker run --rm \
-            --entrypoint /build-libcurl-a30.sh \
+            --entrypoint /bin/bash \
             -e CURL_VERSION=${{ inputs.curl_version || '8.22.0' }} \
             -e OPENSSL_VERSION=${{ inputs.openssl_version || '1.1.1w' }} \
             -v ${{ github.workspace }}/build-libcurl-a30.sh:/build-libcurl-a30.sh:ro \
             -v ${{ github.workspace }}/output:/output \
-            dsperate-builder-a30
+            dsperate-builder-a30 /build-libcurl-a30.sh
 
       - name: Upload libraries
         env:
