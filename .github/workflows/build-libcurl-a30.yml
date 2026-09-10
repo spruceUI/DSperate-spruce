@@ -5,7 +5,7 @@ on:
     inputs:
       curl_version:
         description: 'curl version'
-        default: '8.22.0'
+        default: '8.17.0'
       openssl_version:
         description: 'OpenSSL 1.1 version'
         default: '1.1.1w'
@@ -45,7 +45,7 @@ jobs:
           mkdir -p output
           docker run --rm \
             --entrypoint /bin/bash \
-            -e CURL_VERSION=${{ inputs.curl_version || '8.22.0' }} \
+            -e CURL_VERSION=${{ inputs.curl_version || '8.17.0' }} \
             -e OPENSSL_VERSION=${{ inputs.openssl_version || '1.1.1w' }} \
             -v ${{ github.workspace }}/build-libcurl-a30.sh:/build-libcurl-a30.sh:ro \
             -v ${{ github.workspace }}/output:/output \
