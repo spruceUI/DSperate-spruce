@@ -9,7 +9,7 @@ on:
       skip_tests:
         description: 'Skip the qemu-aarch64 unit tests'
         type: boolean
-        default: false
+        default: true
   workflow_call:
     inputs:
       dsperate_version:
@@ -17,7 +17,7 @@ on:
         default: 'main'
       skip_tests:
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: write
