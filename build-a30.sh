@@ -100,7 +100,7 @@ cmake -S . -B build -G Ninja \
     -DCMAKE_C_FLAGS="$COMMON_FLAGS" \
     -DCMAKE_CXX_FLAGS="$COMMON_FLAGS" \
     -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
-    -DDSPERATE_HEADLESS=ON \
+    -DDSPERATE_HEADLESS=OFF \
     -DDSPERATE_SDL=ON \
     -DDSPERATE_WAYLAND=OFF \
     -DDSPERATE_TESTS=$([ "$SKIP_TESTS" = "1" ] && echo OFF || echo ON)
@@ -169,7 +169,6 @@ check_floor() {
     fi
 }
 echo "=== glibc floor ==="
-check_floor build/src/frontend/headless/dsperate-headless
 check_floor build/src/frontend/sdl/dsperate
 
 echo "=== Shared library dependencies ==="
@@ -183,12 +182,8 @@ done
 echo "=== Collecting output ==="
 rm -rf "${OUTPUT_DIR:?}"/*
 mkdir -p "$OUTPUT_DIR/configs"
-# Upstream 1.0.0 swapped these two names round: the SDL frontend is now called
-# "dsperate" and the headless one "dsperate-headless". "dsperate" in this
-# tarball used to be the CLI binary and is now the one a device runs.
-cp build/src/frontend/sdl/dsperate                "$OUTPUT_DIR/dsperate"
-cp build/src/frontend/headless/dsperate-headless  "$OUTPUT_DIR/dsperate-headless"
-"$DSP_STRIP" -s "$OUTPUT_DIR/dsperate" "$OUTPUT_DIR/dsperate-headless"
+cp build/src/frontend/sdl/dsperate     "$OUTPUT_DIR/dsperate.a30"
+"$DSP_STRIP" -s "$OUTPUT_DIR/dsperate.a30"
 cp configs/*.ini "$OUTPUT_DIR/configs/"
 cp LICENSE README.md "$OUTPUT_DIR/"
 
