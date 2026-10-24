@@ -179,7 +179,7 @@ cmake -S . -B build -G Ninja \
     -DDSPERATE_HEADLESS=ON \
     -DDSPERATE_SDL=ON \
     -DDSPERATE_WAYLAND=OFF \
-    -DDSPERATE_TESTS=ON
+    -DDSPERATE_TESTS=$([ "$SKIP_TESTS" = "1" ] && echo OFF || echo ON)
 
 # A configure that quietly fell back to the interpreter would still produce a
 # working binary, just a slow one with nothing in any log to say why.
