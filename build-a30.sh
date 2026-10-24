@@ -103,7 +103,7 @@ cmake -S . -B build -G Ninja \
     -DDSPERATE_HEADLESS=ON \
     -DDSPERATE_SDL=ON \
     -DDSPERATE_WAYLAND=OFF \
-    -DDSPERATE_TESTS=ON
+    -DDSPERATE_TESTS=$([ "$SKIP_TESTS" = "1" ] && echo OFF || echo ON)
 
 ! grep -q 'COMPILER_AR:FILEPATH=.*NOTFOUND' build/CMakeCache.txt || { echo "ERROR: no LTO archiver"; exit 1; }
 [ -d build/src/frontend/sdl ] || { echo "ERROR: SDL2 not found in sysroot, no SDL frontend"; exit 1; }
