@@ -172,9 +172,7 @@ echo "=== glibc floor ==="
 check_floor build/src/frontend/sdl/dsperate
 
 echo "=== Shared library dependencies ==="
-for b in build/src/frontend/headless/dsperate-headless build/src/frontend/sdl/dsperate; do
-    echo "  $(basename "$b"): $($READELF -d "$b" | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | tr '\n' ' ')"
-done
+echo "  $(basename "$b"): $($READELF -d "build/src/frontend/sdl/dsperate" | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | tr '\n' ' ')"
 
 # ============================================================
 # Package
