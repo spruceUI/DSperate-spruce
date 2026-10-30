@@ -3,6 +3,10 @@ name: Build All
 on:
   workflow_dispatch:
     inputs:
+      dsperate_owner:
+        description: 'DSperate fork owner/organization'
+        type: string
+        default: 'beebono'
       dsperate_version:
         description: 'DSperate branch/tag/commit'
         default: 'main'
@@ -18,11 +22,13 @@ jobs:
   universal:
     uses: ./.github/workflows/build-universal.yml
     with:
+      dsperate_owner: ${{ inputs.dsperate_owner }}
       dsperate_version: ${{ inputs.dsperate_version }}
       skip_tests: ${{ inputs.skip_tests }}
 
   a30:
     uses: ./.github/workflows/build-a30.yml
     with:
+      dsperate_owner: ${{ inputs.dsperate_owner }}
       dsperate_version: ${{ inputs.dsperate_version }}
       skip_tests: ${{ inputs.skip_tests }}

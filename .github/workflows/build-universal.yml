@@ -3,6 +3,10 @@ name: Build DSperate (aarch64)
 on:
   workflow_dispatch:
     inputs:
+      dsperate_owner:
+        description: 'DSperate fork owner/organization'
+        type: string
+        default: 'beebono'
       dsperate_version:
         description: 'DSperate branch/tag/commit'
         default: 'main'
@@ -12,6 +16,9 @@ on:
         default: true
   workflow_call:
     inputs:
+      dsperate_owner:
+        type: string
+        default: 'beebono'
       dsperate_version:
         type: string
         default: 'main'
@@ -55,8 +62,9 @@ jobs:
         run: |
           mkdir -p output ccache-aarch64
           docker run --rm \
-            -e DSPERATE_VERSION=${{ inputs.dsperate_version || 'main' }} \
-            -e SKIP_TESTS=${{ inputs.skip_tests && '1' || '0' }} \
+            -e DSPERATE_REPO="https://github.com/${{ inputs.dsperate_owner }}/DSperate.git" \
+            -e DSPERATE_VERSION="${{ inputs.dsperate_version || 'main' }}" \
+            -e SKIP_TESTS="${{ inputs.skip_tests && '1' || '0' }}" \
             -e CCACHE_DIR=/ccache \
             -v ${{ github.workspace }}/output:/output \
             -v ${{ github.workspace }}/ccache-aarch64:/ccache \
