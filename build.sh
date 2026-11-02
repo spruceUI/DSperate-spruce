@@ -250,17 +250,13 @@ check_floor() {
 }
 
 echo "=== glibc floor (maximum GLIBC_$GLIBC_MAX) ==="
-for b in build/src/frontend/headless/dsperate-headless build/src/frontend/sdl/dsperate; do
-    if ! check_floor "$b"; then
-        echo "ERROR: ABI floor validation failed for $b; stopping before packaging"
-        exit 1
-    fi
-done
+if ! check_floor "build/src/frontend/sdl/dsperate"; then
+    echo "ERROR: ABI floor validation failed for build/src/frontend/sdl/dsperate; stopping before packaging"
+    exit 1
+fi
 
 echo "=== Shared library dependencies ==="
-for b in build/src/frontend/headless/dsperate-headless build/src/frontend/sdl/dsperate; do
-    echo "  $(basename "$b"): $("$READELF" -d "$b" | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | tr '\n' ' ')"
-done
+echo "  $(basename "build/src/frontend/sdl/dsperate"): $("$READELF" -d "build/src/frontend/sdl/dsperate" | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | tr '\n' ' ')"
 
 # ============================================================
 # Package
@@ -269,9 +265,8 @@ echo "=== Collecting output ==="
 rm -rf "$OUTPUT_DIR"/*
 mkdir -p "$OUTPUT_DIR/libs" "$OUTPUT_DIR/configs"
 
-cp build/src/frontend/headless/dsperate-headless     "$OUTPUT_DIR/"
 cp build/src/frontend/sdl/dsperate              "$OUTPUT_DIR/"
-"$DSP_STRIP" -s "$OUTPUT_DIR/dsperate-headless" "$OUTPUT_DIR/dsperate"
+"$DSP_STRIP" -s  "$OUTPUT_DIR/dsperate"
 
 cp configs/*.ini "$OUTPUT_DIR/configs/"
 cp LICENSE README.md "$OUTPUT_DIR/"
@@ -296,7 +291,6 @@ collect_deps() {
         fi
     done
 }
-collect_deps "$OUTPUT_DIR/dsperate-headless"
 collect_deps "$OUTPUT_DIR/dsperate"
 for so in "$OUTPUT_DIR"/libs/*.so*; do
     [ -f "$so" ] || continue
