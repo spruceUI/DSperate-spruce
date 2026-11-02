@@ -213,27 +213,53 @@ fi
 # Verify the ABI floor
 # ============================================================
 check_floor() {
-    local bin="$1" worst
-    worst=$($READELF -V "$bin" 2>/dev/null | grep -oE 'GLIBC_2\.[0-9]+' | sort -uV | tail -1)
-    echo "  $(basename "$bin"): max ${worst:-none}"
-    [ -n "$worst" ] || return 0
-    if [ "$(printf '%s\n' "GLIBC_$GLIBC_MAX" "$worst" | sort -V | tail -1)" != "GLIBC_$GLIBC_MAX" ]; then
-        echo "ERROR: $(basename "$bin") needs $worst, above the GLIBC_$GLIBC_MAX floor"
+    local bin="$1" version_info worst cxx_symbols
+    echo "--- ABI check: $bin ---"
+
+    if [ ! -f "$bin" ]; then
+        echo "FAIL: expected executable was not produced: $bin"
         return 1
     fi
-    if $READELF -V "$bin" 2>/dev/null | grep -qE 'GLIBCXX_|CXXABI_'; then
-        echo "ERROR: $(basename "$bin") references libstdc++ versioned symbols; -static-libstdc++ did not take"
+    if ! version_info=$("$READELF" -V "$bin" 2>&1); then
+        echo "FAIL: $READELF -V '$bin' could not inspect the binary:"
+        echo "$version_info"
         return 1
     fi
+
+    # grep returns 1 when no GLIBC version tags exist. Under set -euo pipefail
+    # that used to terminate this script during the assignment, before the
+    # check could print any useful diagnostic.
+    worst=$(printf '%s\n' "$version_info" | grep -oE 'GLIBC_2\.[0-9]+' | sort -uV | tail -1 || true)
+    if [ -z "$worst" ]; then
+        echo "INFO: $(basename "$bin") has no GLIBC_2.x versioned symbol requirements"
+    else
+        echo "INFO: $(basename "$bin") requires GLIBC versions through $worst (maximum allowed: GLIBC_$GLIBC_MAX)"
+        if [ "$(printf '%s\n' "GLIBC_$GLIBC_MAX" "$worst" | sort -V | tail -1)" != "GLIBC_$GLIBC_MAX" ]; then
+            echo "FAIL: $(basename "$bin") requires $worst, newer than the supported GLIBC_$GLIBC_MAX floor; it may not load on the oldest spruce devices"
+            return 1
+        fi
+    fi
+
+    cxx_symbols=$(printf '%s\n' "$version_info" | grep -oE '(GLIBCXX|CXXABI)_[0-9.]+' | sort -Vu || true)
+    if [ -n "$cxx_symbols" ]; then
+        echo "FAIL: $(basename "$bin") has dynamic libstdc++ ABI requirements despite -static-libstdc++:"
+        printf '  %s\n' $cxx_symbols
+        return 1
+    fi
+    echo "PASS: $(basename "$bin") satisfies the configured ABI checks"
 }
 
-echo "=== glibc floor ==="
-check_floor build/src/frontend/headless/dsperate-headless
-check_floor build/src/frontend/sdl/dsperate
+echo "=== glibc floor (maximum GLIBC_$GLIBC_MAX) ==="
+for b in build/src/frontend/headless/dsperate-headless build/src/frontend/sdl/dsperate; do
+    if ! check_floor "$b"; then
+        echo "ERROR: ABI floor validation failed for $b; stopping before packaging"
+        exit 1
+    fi
+done
 
 echo "=== Shared library dependencies ==="
 for b in build/src/frontend/headless/dsperate-headless build/src/frontend/sdl/dsperate; do
-    echo "  $(basename "$b"): $($READELF -d "$b" | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | tr '\n' ' ')"
+    echo "  $(basename "$b"): $("$READELF" -d "$b" | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | tr '\n' ' ')"
 done
 
 # ============================================================
@@ -256,7 +282,7 @@ SKIP_LIBS="linux-vdso|ld-linux|libc\.so|libm\.so|libdl\.so|libpthread\.so|librt\
 
 collect_deps() {
     local binary="$1"
-    $READELF -d "$binary" 2>/dev/null | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | while read -r lib; do
+    "$READELF" -d "$binary" 2>/dev/null | grep NEEDED | sed 's/.*\[\(.*\)\]/\1/' | while read -r lib; do
         [ -f "$OUTPUT_DIR/libs/$lib" ] && continue
         echo "$lib" | grep -qE "$SKIP_LIBS" && continue
         local src
