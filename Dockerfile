@@ -47,6 +47,16 @@ RUN dpkg --add-architecture arm64 && \
     libasound2-dev:arm64 \
     && rm -rf /var/lib/apt/lists/*
 
+# Keep the device sysroot on Ubuntu 20.04/glibc 2.31, but provide a newer Vulkan
+# headers snapshot for current DSperate builds. This avoids raising the ABI floor
+# while satisfying the newer extension declarations used by upstream Vulkan code.
+RUN wget -qO /tmp/vulkan-headers.tar.gz \
+    https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.3.296.tar.gz && \
+    mkdir -p /tmp/vulkan-headers && \
+    tar -xzf /tmp/vulkan-headers.tar.gz -C /tmp/vulkan-headers --strip-components=1 && \
+    cp -a /tmp/vulkan-headers/include/. /usr/local/include/ && \
+    rm -rf /tmp/vulkan-headers /tmp/vulkan-headers.tar.gz
+
 COPY toolchain-aarch64.cmake /toolchain-aarch64.cmake
 COPY build.sh /build.sh
 RUN chmod +x /build.sh
