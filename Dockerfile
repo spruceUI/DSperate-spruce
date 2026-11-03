@@ -43,6 +43,7 @@ RUN dpkg --add-architecture arm64 && \
     libxkbcommon-dev:arm64 \
     libegl1-mesa-dev:arm64 \
     libgles2-mesa-dev:arm64 \
+    libvulkan-dev:arm64 \
     libasound2-dev:arm64 \
     && rm -rf /var/lib/apt/lists/*
 
