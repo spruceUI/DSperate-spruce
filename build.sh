@@ -176,6 +176,7 @@ cmake -S . -B build -G Ninja \
     -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
     -DDSPERATE_JIT=ON \
     -DDSPERATE_NEON=ON \
+    -DDSPERATE_GLES=ON \
     -DDSPERATE_HEADLESS=OFF \
     -DDSPERATE_SDL=ON \
     -DDSPERATE_WAYLAND=OFF \
@@ -188,10 +189,17 @@ cmake -S . -B build -G Ninja \
 # these with option(), so the cache entry keeps the ON default even when
 # CMakeLists.txt turns them off - it does that with a plain set(), which
 # shadows the cache without rewriting it. A cache grep therefore passes whether
-# the JIT was built or not, which makes it exactly the silent-fallback check it
-# was supposed to be. The compile definition is the effective value.
+# the JIT was built or not. The compile definition is the effective value.
 grep -q -- '-DDSPERATE_JIT=1'  build/compile_commands.json || { echo "ERROR: JIT not compiled in"; exit 1; }
 grep -q -- '-DDSPERATE_NEON=1' build/compile_commands.json || { echo "ERROR: NEON kernels not compiled in"; exit 1; }
+# GPU 3D needs at least one compiled raster backend. Check the effective compile
+# definitions rather than CMakeCache.txt, where an option may not reflect the
+# backend CMake actually built (e.g. Vulkan is disabled when its headers are missing).
+if ! grep -q -- '-DDSPERATE_GLES=1' build/compile_commands.json && \
+   ! grep -q -- '-DDSPERATE_VULKAN=1' build/compile_commands.json; then
+    echo "ERROR: neither GLES nor Vulkan GPU 3D raster backend was compiled in"
+    exit 1
+fi
 ! grep -q 'COMPILER_AR:FILEPATH=.*NOTFOUND' build/CMakeCache.txt || { echo "ERROR: no LTO archiver; the static library link would fail"; exit 1; }
 [ -d build/src/frontend/sdl ] || { echo "ERROR: SDL2 not found, no SDL frontend"; exit 1; }
 
