@@ -1,6 +1,7 @@
 FROM ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+ARG VULKAN_HEADERS_VERSION=vulkan-sdk-1.4.363.0
 
 # arm64 multiarch, so we link against focal's aarch64 libraries: glibc 2.31,
 # the floor shared by every spruce aarch64 device. Upstream CI builds on
@@ -46,6 +47,14 @@ RUN dpkg --add-architecture arm64 && \
     libvulkan-dev:arm64 \
     libasound2-dev:arm64 \
     && rm -rf /var/lib/apt/lists/*
+
+# Focal's libvulkan-dev headers predate extensions used by current DSperate.
+# Keep the target loader/library from focal, but compile against current headers.
+RUN git clone --depth 1 --branch "${VULKAN_HEADERS_VERSION}" \
+        https://github.com/KhronosGroup/Vulkan-Headers.git /tmp/Vulkan-Headers && \
+    mkdir -p /opt/vulkan-headers && \
+    cp -a /tmp/Vulkan-Headers/include /opt/vulkan-headers/ && \
+    rm -rf /tmp/Vulkan-Headers
 
 COPY toolchain-aarch64.cmake /toolchain-aarch64.cmake
 COPY build.sh /build.sh

@@ -150,7 +150,7 @@ done
 # on our 2.31 target the symbols live in libpthread.so.0 and have to be asked
 # for. --no-as-needed because CMake puts linker flags ahead of the objects
 # that reference them, and as-needed would then drop the library.
-COMMON_FLAGS="-O3 ${ARCH_FLAGS} -pthread"
+COMMON_FLAGS="-O3 ${ARCH_FLAGS} -pthread -I/opt/vulkan-headers/include"
 LINK_FLAGS="-pthread -Wl,--no-as-needed -lpthread -Wl,--as-needed"
 # The device's libstdc++ is older than this toolchain's on several targets,
 # so carry ours. glibc stays dynamic — it is the floor we are matching.
