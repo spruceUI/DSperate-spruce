@@ -1,7 +1,8 @@
-# DSperate-spruce
+# Noxwell-spruce
 
-Cross-compiled [DSperate](https://github.com/beebono/DSperate) (Nintendo DS) builds for
-[spruceOS](https://github.com/spruceUI/spruceOS).
+Cross-compiled builds of Noxwell's emulators for [spruceOS](https://github.com/spruceUI/spruceOS):
+[DSperate](https://github.com/beebono/DSperate) (Nintendo DS) and
+[mupen64plus-pow2](https://github.com/beebono/mupen64plus-pow2) (Nintendo 64).
 
 ## Why this repo
 
@@ -17,6 +18,7 @@ so the binary matches the floor our other universal binaries hold (`ra64.univers
 |-------|--------|---------|------|
 | Universal | `dsperate-aarch64.tar.gz` | Brick, Brick Pro, TSP, TSPS, Flip, Pixel2, Anbernic XX (BaseOS), RGB30 | Ubuntu 20.04 multiarch, GCC 10 (glibc 2.31) |
 | A30 | `dsperate-a30.tar.gz` | A30 (armhf, Cortex-A7) | A30 buildroot, GCC 13.2 (glibc 2.23) |
+| mupen64plus-pow2 | `mupen64plus-pow2-aarch64.tar.gz` | aarch64 devices | Ubuntu 20.04 multiarch, GCC 10 (glibc 2.31) |
 
 ### The 32-bit build got a JIT — upstream wrote the backend
 
@@ -52,7 +54,20 @@ gh workflow run build-all.yml
 gh workflow run build-all.yml -f dsperate_version=v0.1.0
 
 # Download the output
-gh release download beta-main -p "dsperate-aarch64.tar.gz" -R spruceUI/DSperate-spruce
+gh release download beta-main -p "dsperate-aarch64.tar.gz" -R spruceUI/Noxwell-spruce
+```
+
+## mupen64plus-pow2
+
+`pow2/` builds the one static binary with upstream's `bundle/build-bundle.sh aarch64`, in a
+focal image whose unsuffixed cross tools point at GCC 10, against SDL2 2.26.1 (linked, not
+shipped) and focal's static zlib and libpng. The build fails above glibc 2.31 or on any
+dynamic `GLIBCXX_`/`CXXABI_` symbol. The tarball holds `mupen64plus-pow2`, the core's
+`data/` (`mupen64plus.ini`, `mupencheat.txt`), the licences and `BUILD_INFO`. On spruce the
+process has to be called `mupen64plus`, so rename it when deploying.
+
+```bash
+gh workflow run build-pow2.yml -R spruceUI/Noxwell-spruce
 ```
 
 ## Output structure
