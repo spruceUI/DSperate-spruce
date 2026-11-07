@@ -14,6 +14,13 @@ on:
         description: 'Skip the qemu-aarch64 unit tests'
         type: boolean
         default: true
+      pow2_owner:
+        description: 'mupen64plus-pow2 fork owner/organization'
+        type: string
+        default: 'beebono'
+      pow2_version:
+        description: 'mupen64plus-pow2 branch/tag/commit'
+        default: 'devel'
 
 permissions:
   contents: write
@@ -32,3 +39,9 @@ jobs:
       dsperate_owner: ${{ inputs.dsperate_owner }}
       dsperate_version: ${{ inputs.dsperate_version }}
       skip_tests: ${{ inputs.skip_tests }}
+
+  pow2:
+    uses: ./.github/workflows/build-pow2.yml
+    with:
+      pow2_owner: ${{ inputs.pow2_owner }}
+      pow2_version: ${{ inputs.pow2_version }}
